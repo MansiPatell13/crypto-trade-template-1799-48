@@ -14,7 +14,7 @@ const Home = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative container px-4 pt-28 pb-20"
+        className="relative container pt-28 pb-20"
       >
         {/* Background */}
         <div 
@@ -94,7 +94,7 @@ const Home = () => {
       </motion.section>
 
       {/* Feature Highlights */}
-      <section className="container px-4 py-20">
+      <section className="container py-20">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -150,7 +150,7 @@ const Home = () => {
       </section>
 
       {/* Showcase Section */}
-      <section className="container px-4 py-24">
+      <section className="container py-24">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -189,7 +189,7 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="container px-4 py-20 relative">
+      <section className="container py-20 relative">
         <div 
           className="absolute inset-0 opacity-40"
           style={{

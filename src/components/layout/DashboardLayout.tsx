@@ -185,7 +185,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="container py-6">
+      <main className="container py-4">
         {children}
       </main>
     </div>

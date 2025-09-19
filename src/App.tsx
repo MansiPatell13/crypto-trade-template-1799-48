@@ -45,10 +45,10 @@ function App() {
                 <div className="fixed top-0 left-0 right-0 z-50">
                   <Navigation />
                 </div>
-                <div className="fixed top-14 left-0 right-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                <div className="fixed top-16 left-0 right-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                   <LiveTicker />
                 </div>
-                <main className="pt-24">
+                <main className="pt-28">
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/features" element={<Features />} />
