@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Target, Search, Settings, LogOut, User, Menu, X } from "lucide-react";
-import { authService } from "@/services/auth/authService";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
@@ -24,16 +24,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user, signOut } = useAuth();
 
   const handleLogout = async () => {
-    const response = await authService.signOut();
-    if (response.ok) {
-      toast({
-        title: "Signed out successfully",
-        description: "You have been logged out of your account"
-      });
-      navigate('/');
-    }
+    await signOut();
+    toast({
+      title: "Signed out successfully",
+      description: "You have been logged out of your account"
+    });
+    navigate('/');
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -47,14 +46,13 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     }
   };
 
-  const user = authService.getCurrentUser();
   const userInitials = user?.name ? user.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
 
   return (
     <div className="min-h-screen bg-background">
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="px-4 flex h-16 items-center justify-between">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2">
             <Target className="h-6 w-6 text-primary" />
@@ -107,7 +105,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                         variant="ghost"
                         className="justify-start"
                         onClick={() => {
-                          navigate('/dashboard/profile');
+                          navigate('/profile');
                           setIsMobileMenuOpen(false);
                         }}
                       >
@@ -118,7 +116,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                         variant="ghost"
                         className="justify-start"
                         onClick={() => {
-                          navigate('/dashboard/settings');
+                          navigate('/settings');
                           setIsMobileMenuOpen(false);
                         }}
                       >
@@ -164,11 +162,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                     </div>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>
+                  <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+                  <DropdownMenuItem onClick={() => navigate('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
@@ -185,7 +183,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </header>
 
       {/* Main Content */}
-      <main className="container py-4">
+      <main className="px-4 py-4 max-w-full">
         {children}
       </main>
     </div>

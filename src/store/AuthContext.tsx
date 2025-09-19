@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { AuthState, AuthContextType, User, SignUpData, AuthResponse } from '@/types/auth';
 import { authService } from '@/services/auth/authService';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
 
 type AuthAction = 
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SET_SESSION'; payload: Session | null }
   | { type: 'SIGN_OUT' };
 
 const initialState: AuthState = {
@@ -21,6 +24,12 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return {
         ...state,
         user: action.payload,
+        isAuthenticated: !!action.payload,
+        isLoading: false,
+      };
+    case 'SET_SESSION':
+      return {
+        ...state,
         isAuthenticated: !!action.payload,
         isLoading: false,
       };
@@ -54,18 +63,43 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    // Check if user is already signed in on app start
-    const currentUser = authService.getCurrentUser();
-    dispatch({ type: 'SET_USER', payload: currentUser });
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        dispatch({ type: 'SET_SESSION', payload: session });
+        
+        if (session?.user) {
+          // Defer user profile fetching to avoid blocking
+          setTimeout(async () => {
+            const user = await authService.getCurrentUser();
+            dispatch({ type: 'SET_USER', payload: user });
+          }, 0);
+        } else {
+          dispatch({ type: 'SET_USER', payload: null });
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      dispatch({ type: 'SET_SESSION', payload: session });
+      
+      if (session?.user) {
+        const user = await authService.getCurrentUser();
+        dispatch({ type: 'SET_USER', payload: user });
+      } else {
+        dispatch({ type: 'SET_USER', payload: null });
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string): Promise<AuthResponse> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     const response = await authService.signIn(email, password);
     
-    if (response.ok && response.user) {
-      dispatch({ type: 'SET_USER', payload: response.user });
-    } else {
+    if (!response.ok) {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
     
@@ -76,9 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'SET_LOADING', payload: true });
     const response = await authService.signUp(userData);
     
-    if (response.ok && response.user) {
-      dispatch({ type: 'SET_USER', payload: response.user });
-    } else {
+    if (!response.ok) {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
     

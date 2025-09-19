@@ -186,8 +186,8 @@ const Login = () => {
         >
           <p className="text-xs text-primary font-medium mb-1">Demo credentials:</p>
           <p className="text-xs text-muted-foreground">
-            Email: demo@bullseye.test<br />
-            Password: Demo@123
+            Email: demo@example.com<br />
+            Password: demo123 (any email/password will work for testing)
           </p>
         </motion.div>
       </div>

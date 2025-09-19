@@ -1,18 +1,36 @@
 import { Button } from "@/components/ui/button";
 import { toast } from "@/hooks/use-toast";
 import { Github } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface SocialButtonsProps {
   action: "login" | "signup";
 }
 
 const SocialButtons = ({ action }: SocialButtonsProps) => {
-  const handleSocialAuth = (provider: string) => {
-    // TODO: integrate Supabase: await supabase.auth.signInWithOAuth({ provider })
-    toast({
-      title: "Social login coming soon",
-      description: `${provider} ${action} will be enabled when backend is connected.`,
-    });
+  const handleSocialAuth = async (provider: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Social login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Social login failed",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

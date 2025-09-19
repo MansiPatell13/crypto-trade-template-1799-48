@@ -1,112 +1,203 @@
 import { User, AuthResponse, SignUpData } from '@/types/auth';
-import { DEMO_CREDENTIALS } from '@/constants/markets';
-import { StorageService } from '@/services/storage/storageService';
+import { supabase } from '@/integrations/supabase/client';
 
 class AuthService {
-  private readonly STORAGE_KEY = 'bullseye_user';
-  private currentUser: User | null = null;
-
-  constructor() {
-    this.initializeUser();
-  }
-
-  private initializeUser(): void {
-    const userData = StorageService.getItem<User>(this.STORAGE_KEY);
-    if (userData) {
-      this.currentUser = userData;
-    }
-  }
-
-  private setCurrentUser(user: User | null): void {
-    this.currentUser = user;
-    if (user) {
-      StorageService.setItem(this.STORAGE_KEY, user);
-    } else {
-      StorageService.removeItem(this.STORAGE_KEY);
-    }
-  }
-
-  private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
-
   async signIn(email: string, password: string): Promise<AuthResponse> {
-    await this.delay(800);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password) {
-      const user: User = {
-        id: 'demo-user-id',
-        name: 'Demo User',
-        email: DEMO_CREDENTIALS.email,
-        marketPreference: 'india'
-      };
+      if (error) {
+        return { ok: false, error: error.message };
+      }
 
-      this.setCurrentUser(user);
-      return { ok: true, user };
+      if (data.user) {
+        // Get user profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', data.user.id)
+          .single();
+
+        const user: User = {
+          id: data.user.id,
+          name: profile?.name || data.user.email?.split('@')[0] || '',
+          email: data.user.email || '',
+          marketPreference: profile?.market_preference as 'india' | 'usa' || undefined,
+        };
+
+        return { ok: true, user };
+      }
+
+      return { ok: false, error: 'Unknown error occurred' };
+    } catch (error) {
+      return { ok: false, error: 'Network error occurred' };
     }
-
-    return { 
-      ok: false, 
-      error: 'Invalid credentials. Use demo@bullseye.test / Demo@123' 
-    };
   }
 
   async signUp(userData: SignUpData): Promise<AuthResponse> {
-    await this.delay(800);
+    try {
+      const redirectUrl = `${window.location.origin}/auth/verify-email`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            name: userData.name,
+          }
+        }
+      });
 
-    const user: User = {
-      id: `user-${Date.now()}`,
-      name: userData.name,
-      email: userData.email,
-    };
+      if (error) {
+        return { ok: false, error: error.message };
+      }
 
-    this.setCurrentUser(user);
-    return { 
-      ok: true, 
-      user, 
-      redirectPath: '/auth/market-selection' 
-    };
+      if (data.user) {
+        const user: User = {
+          id: data.user.id,
+          name: userData.name,
+          email: userData.email,
+        };
+
+        return { 
+          ok: true, 
+          user, 
+          redirectPath: '/auth/verify-email' 
+        };
+      }
+
+      return { ok: false, error: 'Unknown error occurred' };
+    } catch (error) {
+      return { ok: false, error: 'Network error occurred' };
+    }
   }
 
   async signOut(): Promise<AuthResponse> {
-    await this.delay(300);
-    this.setCurrentUser(null);
-    return { ok: true };
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: 'Network error occurred' };
+    }
   }
 
   async sendResetEmail(email: string): Promise<AuthResponse> {
-    await this.delay(800);
-    return { ok: true };
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/reset-password`,
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: 'Network error occurred' };
+    }
   }
 
   async resetPassword(token: string, newPassword: string): Promise<AuthResponse> {
-    await this.delay(800);
-    return { ok: true };
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: 'Network error occurred' };
+    }
   }
 
   async resendVerification(email: string): Promise<AuthResponse> {
-    await this.delay(800);
-    return { ok: true };
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/verify-email`
+        }
+      });
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: 'Network error occurred' };
+    }
   }
 
   async setMarketPreference(market: 'india' | 'usa'): Promise<AuthResponse> {
-    await this.delay(500);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        return { ok: false, error: 'No authenticated user' };
+      }
 
-    if (this.currentUser) {
-      const updatedUser = { ...this.currentUser, marketPreference: market };
-      this.setCurrentUser(updatedUser);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ market_preference: market })
+        .eq('user_id', user.id);
+
+      if (error) {
+        return { ok: false, error: error.message };
+      }
+
+      // Get updated profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      const updatedUser: User = {
+        id: user.id,
+        name: profile?.name || user.email?.split('@')[0] || '',
+        email: user.email || '',
+        marketPreference: market,
+      };
+
       return { ok: true, user: updatedUser };
+    } catch (error) {
+      return { ok: false, error: 'Network error occurred' };
     }
-
-    return { ok: false, error: 'No authenticated user' };
   }
 
-  isSignedIn(): boolean {
-    return !!this.currentUser;
-  }
+  async getCurrentUser(): Promise<User | null> {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return null;
 
-  getCurrentUser(): User | null {
-    return this.currentUser;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      return {
+        id: user.id,
+        name: profile?.name || user.email?.split('@')[0] || '',
+        email: user.email || '',
+        marketPreference: profile?.market_preference as 'india' | 'usa' || undefined,
+      };
+    } catch (error) {
+      return null;
+    }
   }
 }
 
